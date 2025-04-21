@@ -76,7 +76,7 @@ hours = hours.reshape(-1, 1)[~nan_data].reshape(-1, 1)
 X = np.concatenate((humid, temp), axis=1)
 pd.Series(y.reshape(-1,))[70000:70300].plot()
 def electricity_linear_model(params, X):
-    μ =  params[0] + X[:,0]* params[1] + X[:,1]* params[2] + params[3]*np.cos(params[4]*hours + params[5]) + params[6]*np.cos(params[7]*months + params[8])
+    μ =  params[0] + X[:,0]* params[1] + X[:,1]* params[2] + params[3]*np.cos((params[4]*hours).reshape(-1,) + params[5]) + params[6]*np.cos((params[7]*months).reshape(-1,) + params[8])
     return μ
 def electricity_demand_model(params, X, y):
     σ = params[-1]
@@ -92,7 +92,7 @@ result = minimize(lambda θ: -electricity_demand_model(θ, X, y), init, bounds=l
 pd.DataFrame(θ_mle).to_csv('params_classrooms_2022_2024_hour_month_noAR1.csv')
 
 def electricity_linear_model(params, X):
-    μ =  params[0] + X[:,0]* params[1] + X[:,1]* params[2] + params[3]*np.cos(params[4]*hours + params[5]) + params[6]*np.cos(params[7]*months + params[8])
+    μ =  params[0] + X[:,0]* params[1] + X[:,1]* params[2] + params[3]*np.cos((params[4]*hours).reshape(-1,) + params[5]) + params[6]*np.cos((params[7]*months).reshape(-1,) + params[8])
     return μ
 def elec_loglik(params, X, y):
     ρ = params[-1]
