@@ -116,3 +116,4 @@ init = [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.01, 0.5, 0.5, 0.5, 0.1]
 
 result = minimize(lambda θ: -elec_loglik(θ, X, y), init, bounds=list(zip(lb, ub)))
 θ_mle = result.x
+pd.DataFrame(θ_mle).to_csv('params_classrooms_2022_2024_hour_month_withAR1.csv')
