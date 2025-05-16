@@ -16,6 +16,8 @@ import matplotlib.dates as mdates
 # import mpl_scatter_density # adds projection='scatter_density'
 
 # os.chdir('BEE5850_Project_Fenya_Arron')
+
+# Load data
 data_dir = os.path.join("data", "EnergyUsageClassroomsAll.csv")
 energy_data = pd.read_csv(data_dir)
 energy_data[['Time','Zone']]= energy_data['ts'].str.split(' ', n=1, expand=True)
@@ -62,6 +64,7 @@ square_footage['Building Name'] = [square_footage['Building Name'][i].replace(" 
 square_footage.index = square_footage['Building Name']
 
 energy_data = energy_data.drop(columns=['KimballHall','StatlerHall','VetMedicalCenter','PlantScience','KlarmanHall','GatesHall','MyronTaylorHall','GoldwinSmithHall','UrisHall','StimsonHall','MarthaVanRensselaerComplex','SageHall'])
+
 # Calculate z score
 for bdg in energy_data.columns:
     energy_data[bdg] = (energy_data[bdg] -energy_data[bdg].mean())/energy_data[bdg].std()
@@ -98,29 +101,34 @@ months = months.reshape(-1, 1)[~nan_data].reshape(-1, 1)
 hours = hours.reshape(-1, 1)[~nan_data].reshape(-1, 1)  
 X = np.concatenate((humid, temp), axis=1)
 # pd.Series(y.reshape(-1,))[70000:70300].plot()
+
+# Electricity use regression model
 def electricity_linear_model(params, X):
     μ =  params[0] + X[:,0]* params[1] + X[:,1]* params[2] + params[3]*np.cos((params[4]*hours).reshape(-1,) + params[5]) + params[6]*np.cos((params[7]*months).reshape(-1,) + params[8])
     return μ
 
+# return logliklihood for model, assuming IID residuals 
 def electricity_demand_model(params, X, y):
     σ = params[-1]
     μ = electricity_linear_model(params, X)
     ll = np.sum(norm.logpdf(pd.Series(y.reshape(-1,)), μ, scale=σ))  # compute log-likelihood
     return ll
+
+# Set bounds and initial values
 lb = [-10.0, -10.0, -10.0, -10.0, -100.0, 0, -100.0, -100.0, 0, 0.0001]
 ub = [10.0, 10.0, 10.0, 10.0, 100.0, 2*math.pi, 100.0, 1000.0, 2*math.pi, 10.0]
 init = [0.1, 0.1, 0.1, 0.01, 0.1, 0.1, 0.1,0.1, 0.1, 0.1]
 
+# Fit the model by minimizing negative of log likelihood
 result = minimize(lambda θ: -electricity_demand_model(θ, X, y), init, bounds=list(zip(lb, ub)))
 θ_mle = result.x
 pd.DataFrame(θ_mle).to_csv('params_classrooms_2022_2024_hour_month_noAR1_ZScore_May4.csv')
 
+# Calculate AIC for IID model
 AIC_IID = -2*(electricity_demand_model(θ_mle, X, y) - len(θ_mle))
 
 
-def electricity_linear_model(params, X):
-    μ =  params[0] + X[:,0]* params[1] + X[:,1]* params[2] + params[3]*np.cos((params[4]*hours).reshape(-1,) + params[5]) + params[6]*np.cos((params[7]*months).reshape(-1,) + params[8])
-    return μ
+# Use whitening method, get logliklihood for model with AR(1) Residuals
 
 def elec_loglik(params, X, y):
     ρ = params[-1]
@@ -142,11 +150,11 @@ lb = [-10.0, -10.0, -10.0, -10.0, -100.0, 0, -100.0, -100.0, 0, 0.0001, -0.99]
 ub = [10.0, 10.0, 10.0, 10.0, 100.0, 2*math.pi, 100.0, 1000.0, 2*math.pi, 10.0, 0.99]
 init = list(θ_mle)+ [0.1]
 
+# Minimize negative of logliklihood to fit the model, this will take a long time
 result = minimize(lambda θ: -elec_loglik(θ, X, y), init, bounds=list(zip(lb, ub)))
 θ_mle = result.x
 pd.DataFrame(θ_mle).to_csv('params_classrooms_2022_2024_hour_month_withAR1_ZScore.csv')
 pd.DataFrame(result).to_csv('results_AR_messages.csv')
 
+# Calculate AIC
 AIC_AR1 = -2*(elec_loglik(θ_mle, X, y) - len(θ_mle))
-
-# initalize to non-AR solution? Set bounds tighter?
